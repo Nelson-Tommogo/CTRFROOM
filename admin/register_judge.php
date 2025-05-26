@@ -2,39 +2,46 @@
 session_start();
 require_once '../config/db_connect.php';
 
+// Redirect to login if not logged in as admin
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
     exit;
 }
 
+$error = '';
+$success = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
-    $confirm_password = $_POST['confirm_password'];
-    $display_name = trim($_POST['display_name']);
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
+    $display_name = trim($_POST['display_name'] ?? '');
 
     if (empty($username) || empty($password) || empty($confirm_password) || empty($display_name)) {
-        $error = "All fields are required";
+        $error = "All fields are required.";
     } elseif ($password !== $confirm_password) {
-        $error = "Passwords do not match";
+        $error = "Passwords do not match.";
     } elseif (strlen($password) < 8) {
-        $error = "Password must be at least 8 characters long";
+        $error = "Password must be at least 8 characters long.";
     } else {
         try {
+            // Check if username already exists
             $stmt = $pdo->prepare("SELECT COUNT(*) FROM judges WHERE username = ?");
             $stmt->execute([$username]);
             $count = $stmt->fetchColumn();
 
             if ($count > 0) {
-                $error = "Username already exists";
+                $error = "Username already exists.";
             } else {
+                // Insert new judge
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                 $stmt = $pdo->prepare("INSERT INTO judges (username, password, display_name) VALUES (?, ?, ?)");
                 $stmt->execute([$username, $hashed_password, $display_name]);
+
                 $success = "Judge registered successfully!";
             }
         } catch (PDOException $e) {
-            $error = "Error registering judge: " . $e->getMessage();
+            $error = "Error registering judge: " . htmlspecialchars($e->getMessage());
         }
     }
 }
@@ -43,11 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Register Judge</title>
     <style>
         body {
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f4f4;
             padding: 20px;
         }
@@ -62,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header h1 {
             text-align: center;
             color: #2a7a6d;
+            margin-bottom: 20px;
         }
         nav ul {
             list-style: none;
@@ -69,17 +77,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             justify-content: center;
             padding: 0;
             gap: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
         }
         nav a {
             text-decoration: none;
             color: #2a7a6d;
             font-weight: bold;
         }
+        nav a:hover {
+            text-decoration: underline;
+        }
         .error, .success {
             padding: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
         }
         .error {
             background-color: #ffe6e6;
@@ -105,6 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 10px;
             border-radius: 4px;
             border: 1px solid #ccc;
+            font-size: 1rem;
         }
         button {
             width: 100%;
@@ -113,8 +127,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: white;
             border: none;
             border-radius: 4px;
-            font-size: 1rem;
+            font-size: 1.1rem;
             cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
         }
         button:hover {
             background-color: #245f58;
@@ -138,18 +154,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <section>
         <h2>Register New Judge</h2>
 
-        <?php if (isset($error)): ?>
-            <div class="error"><?php echo $error; ?></div>
+        <?php if ($error): ?>
+            <div class="error"><?php echo htmlspecialchars($error); ?></div>
+        <?php elseif ($success): ?>
+            <div class="success"><?php echo htmlspecialchars($success); ?></div>
         <?php endif; ?>
 
-        <?php if (isset($success)): ?>
-            <div class="success"><?php echo $success; ?></div>
-        <?php endif; ?>
-
-        <form method="post">
+        <form method="post" novalidate>
             <div class="form-group">
                 <label for="username">Username:</label>
-                <input type="text" name="username" id="username" required>
+                <input type="text" name="username" id="username" required autofocus>
             </div>
 
             <div class="form-group">

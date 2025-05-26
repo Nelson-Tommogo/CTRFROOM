@@ -1,15 +1,30 @@
 <?php
 require_once 'config/db_connect.php';
 
-// Get all users with their total scores
-$stmt = $pdo->query("
-    SELECT u.user_id, u.display_name, COALESCE(SUM(s.points), 0) AS total_points
-    FROM users u
-    LEFT JOIN scores s ON u.user_id = s.user_id
-    GROUP BY u.user_id
-    ORDER BY total_points DESC
-");
-$scores = $stmt->fetchAll();
+$scores = [];
+$db_error = false;
+
+try {
+    // Try fetching data from DB
+    $stmt = $pdo->query("
+        SELECT u.user_id, u.display_name, COALESCE(SUM(s.points), 0) AS total_points
+        FROM users u
+        LEFT JOIN scores s ON u.user_id = s.user_id
+        GROUP BY u.user_id
+        ORDER BY total_points DESC
+    ");
+    $scores = $stmt->fetchAll();
+} catch (PDOException $e) {
+    $db_error = true;
+
+    // Optional fallback dummy data
+    $scores = [
+        ['user_id' => 1, 'display_name' => 'Alice', 'total_points' => 95],
+        ['user_id' => 2, 'display_name' => 'Bob', 'total_points' => 85],
+        ['user_id' => 3, 'display_name' => 'Charlie', 'total_points' => 78],
+        ['user_id' => 4, 'display_name' => 'Diana', 'total_points' => 60],
+    ];
+}
 ?>
 
 <!DOCTYPE html>
@@ -20,7 +35,6 @@ $scores = $stmt->fetchAll();
     <title>Scoreboard - Scoring System</title>
     <meta http-equiv="refresh" content="30" />
     <style>
-        /* Basic reset */
         * {
             box-sizing: border-box;
         }
@@ -89,23 +103,28 @@ $scores = $stmt->fetchAll();
         tbody tr:hover {
             background-color: #ecf0f1;
         }
-        /* Medal colors */
         tr.gold {
-            background-color: #ffd70033; /* light gold */
+            background-color: #ffd70033;
             font-weight: 700;
         }
         tr.silver {
-            background-color: #c0c0c033; /* light silver */
+            background-color: #c0c0c033;
             font-weight: 700;
         }
         tr.bronze {
-            background-color: #cd7f3233; /* light bronze */
+            background-color: #cd7f3233;
             font-weight: 700;
         }
         .refresh-note {
             text-align: center;
             font-size: 0.9rem;
             color: #7f8c8d;
+        }
+        .error-message {
+            color: red;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 10px;
         }
         @media (max-width: 600px) {
             nav ul {
@@ -134,6 +153,10 @@ $scores = $stmt->fetchAll();
         <main>
             <section class="scoreboard">
                 <h2>Current Standings</h2>
+
+                <?php if ($db_error): ?>
+                    <p class="error-message">⚠️ Database connection failed. Displaying fallback scores.</p>
+                <?php endif; ?>
 
                 <?php if (empty($scores)): ?>
                     <p>No scores available.</p>
@@ -180,7 +203,6 @@ $scores = $stmt->fetchAll();
     </div>
 
     <script>
-        // Alternative to meta refresh - JS refresh after 30 seconds
         setTimeout(() => location.reload(), 30000);
     </script>
 </body>
