@@ -1,8 +1,8 @@
 <?php
 $host = 'localhost';
-$db = 'scoring_system';
-$user = 'root';
-$pass = ''; 
+$db = 'smartmav_event_scoring_system';
+$user = 'smartmav_event';
+$pass = '6LDz6e}i[DeJ';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
